@@ -13,12 +13,13 @@ import AsyncHTTPClient
 public class Baidu: LLM {
     let temperature: Double
     
-    public init(temperature: Double = 0.8) {
+    public init(temperature: Double = 0.8, callbacks: [BaseCallbackHandler] = [], cache: BaseCache? = nil) {
         self.temperature = temperature
+        super.init(callbacks: callbacks, cache: cache)
     }
     
     public override func _send(text: String, stops: [String] = []) async throws -> LLMResult {
-        let eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: 1)
+        let eventLoopGroup = ThreadManager.thread
         let httpClient = HTTPClient(eventLoopGroupProvider: .shared(eventLoopGroup))
         defer {
             // it's important to shutdown the httpClient after all requests are done, even if one failed. See: https://github.com/swift-server/async-http-client

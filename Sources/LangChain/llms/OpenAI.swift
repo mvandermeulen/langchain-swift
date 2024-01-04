@@ -15,10 +15,10 @@ public class OpenAI: LLM {
     let temperature: Double
     let model: ModelID
     
-    public init(temperature: Double = 0.0, model: ModelID = Model.GPT3.gpt3_5Turbo, callbacks: [BaseCallbackHandler] = []) {
+    public init(temperature: Double = 0.0, model: ModelID = Model.GPT3.gpt3_5Turbo16K, callbacks: [BaseCallbackHandler] = [], cache: BaseCache? = nil) {
         self.temperature = temperature
         self.model = model
-        super.init(callbacks: callbacks)
+        super.init(callbacks: callbacks, cache: cache)
     }
     
     public override func _send(text: String, stops: [String] = []) async throws -> LLMResult {
@@ -26,7 +26,7 @@ public class OpenAI: LLM {
         
         if let apiKey = env["OPENAI_API_KEY"] {
             let baseUrl = env["OPENAI_API_BASE"] ?? "api.openai.com"
-            let eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: 1)
+            let eventLoopGroup = ThreadManager.thread
 
             let httpClient = HTTPClient(eventLoopGroupProvider: .shared(eventLoopGroup))
             defer {

@@ -8,34 +8,45 @@
 import Foundation
 import PDFKit
 
-//if let url = Bundle.main.url(forResource: "sample_pdf", withExtension: "pdf") {
-//
-//}
-public struct PDFLoader: BaseLoader {
-    let fileURL: URL
+
+public class PDFLoader: BaseLoader {
+    let file_path: URL
     
-    public init(fileURL: URL) {
-        self.fileURL = fileURL
+    public init(file_path: URL, callbacks: [BaseCallbackHandler] = []) {
+        self.file_path = file_path
+        super.init(callbacks: callbacks)
     }
     
-    public func load() async -> [Document] {
-        if let pdfDocument = PDFDocument(url: fileURL) {
-            var extractedText = ""
-            let metadata = ["url": fileURL.absoluteString]
-            for pageIndex in 0 ..< pdfDocument.pageCount {
-                if let pdfPage = pdfDocument.page(at: pageIndex) {
-                    if let pageInfo = pdfPage.string {
-                        extractedText += pageInfo
+    public override func _load() async throws -> [Document] {
+//        let nameAndExt = self.file_path.split(separator: ".")
+//        let name = "\(nameAndExt[0])"
+//        let ext = "\(nameAndExt[1])"
+//        if let url = Bundle.main.url(forResource: name, withExtension: ext) {
+        if let pdfDocument = PDFDocument(url: file_path) {
+                var extractedText = ""
+            let metadata = ["source": file_path.absoluteString]
+                for pageIndex in 0 ..< pdfDocument.pageCount {
+                    if let pdfPage = pdfDocument.page(at: pageIndex) {
+                        if let pageContent = pdfPage.attributedString {
+                            let pageString = pageContent.string
+                            extractedText += "\n\(pageString)"
+//                            print("💼\(pageContent)")
+//                            print("🖥️\(pageString)")
+                        }
                     }
-                 
                 }
+                
+    //            print(extractedText)
+                return [Document(page_content: extractedText, metadata: metadata)]
+            } else{
+                throw LangChainError.LoaderError("Parse PDF file fail.")
             }
-            
-//            print(extractedText)
-            return [Document(page_content: extractedText, metadata: metadata)]
-        } else{
-            return []
-        }
+//        } else {
+//            throw LangChainError.LoaderError("PDF not exist")
+//        }
     }
     
+    override func type() -> String {
+        "PDF"
+    }
 }

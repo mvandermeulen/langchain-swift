@@ -10,23 +10,34 @@ import Foundation
 public class LLM {
     static let LLM_REQ_ID_KEY = "llm_req_id"
     static let LLM_COST_KEY = "cost"
-    public init(callbacks: [BaseCallbackHandler] = []) {
+    public init(callbacks: [BaseCallbackHandler] = [], cache: BaseCache? = nil) {
         var cbs: [BaseCallbackHandler] = callbacks
         if Env.addTraceCallbak() && !cbs.contains(where: { item in item is TraceCallbackHandler}) {
             cbs.append(TraceCallbackHandler())
         }
 //        assert(cbs.count == 1)
         self.callbacks = cbs
+        self.cache = cache
     }
     let callbacks: [BaseCallbackHandler]
+    let cache: BaseCache?
     
-    public func send(text: String, stops: [String] = []) async -> LLMResult {
+    public func generate(text: String, stops: [String] = []) async -> LLMResult? {
         let reqId = UUID().uuidString
         var cost = 0.0
         let now = Date.now.timeIntervalSince1970
         callStart(prompt: text, reqId: reqId)
         do {
+            if let cache = self.cache {
+                if let llmResult = await cache.lookup(prompt: text) {
+                    callEnd(output: llmResult.llm_output!, reqId: reqId, cost: 0)
+                    return llmResult
+                }
+            }
             let llmResult = try await _send(text: text, stops: stops)
+            if let cache = self.cache {
+                await cache.update(prompt: text, return_val: llmResult)
+            }
             cost = Date.now.timeIntervalSince1970 - now
             if !llmResult.stream {
                 callEnd(output: llmResult.llm_output!, reqId: reqId, cost: cost)
@@ -36,7 +47,8 @@ public class LLM {
             return llmResult
         } catch {
             callCatch(error: error, reqId: reqId, cost: cost)
-            return LLMResult()
+            print("LLM generate \(error.localizedDescription)")
+            return nil
         }
         
     }
